@@ -310,6 +310,10 @@ function dateToTimestamp(...params) {
     return Math.floor(new Date(...params).getTime() / 1000);
 }
 
+function timestampToDateISOString(timestamp) {
+    return new Date(timestamp * 1000).toISOString();
+}
+
 function durationToSeconds(duration) {
     const durationPattern = /^(\d+) +(second|minute|hour|day|week|month|year)s?$/;
     const match = duration.match(durationPattern);
@@ -345,6 +349,7 @@ module.exports = {
     tryFetchProxy,
     migrateAddress,
     dateToTimestamp,
+    timestampToDateISOString,
     durationToSeconds,
     getContractVersion,
     getEventsFromTx,
