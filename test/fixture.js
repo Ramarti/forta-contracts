@@ -58,9 +58,13 @@ function prepare(config = {}) {
         if (config.stake) {
             if (!config.adminAsChildChainManagerProxy) {
                 //Bridged FORT does not have mint()
+                DEBUG('Fixture: minting');
+
                 await this.token.connect(this.accounts.minter).mint(this.accounts.user1.address, ethers.utils.parseEther('10000'));
             }
             this.accounts.staker = this.accounts.user1;
+            DEBUG('Fixture: approving');
+
             await this.token.connect(this.accounts.staker).approve(this.staking.address, ethers.constants.MaxUint256);
             this.stakingSubjects = {};
             this.stakingSubjects.SCANNER = 0;
@@ -75,15 +79,22 @@ function prepare(config = {}) {
             this.subjectAgency.MANAGED = 4;
 
             if (config.stake.agents) {
+                DEBUG('Fixture: setStakeThreshold agents');
+
                 await this.agents
                     .connect(this.accounts.manager)
                     .setStakeThreshold({ max: config.stake.agents.max, min: config.stake.agents.min, activated: config.stake.agents.activated });
             }
             if (config.stake.scanners) {
                 // DEPRECATION NOTICE: scanners
+                DEBUG('Fixture: setStakeThreshold scanners');
+
                 await this.scanners
                     .connect(this.accounts.manager)
                     .setStakeThreshold({ max: config.stake.scanners.max, min: config.stake.scanners.min, activated: config.stake.scanners.activated }, 1);
+
+                DEBUG('Fixture: setManagedStakeThreshold scannerPools');
+
                 await this.scannerPools
                     .connect(this.accounts.manager)
                     .setManagedStakeThreshold({ max: config.stake.scanners.max, min: config.stake.scanners.min, activated: config.stake.scanners.activated }, 1);

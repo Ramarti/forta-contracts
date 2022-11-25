@@ -11,8 +11,8 @@ const process = require('process');
 Object.assign(process.env, require('dotenv').config().parsed);
 
 const DEFAULT_FEE_DATA = {
-    maxFeePerGas: ethers.utils.parseUnits('400', 'gwei'),
-    maxPriorityFeePerGas: ethers.utils.parseUnits('20', 'gwei'),
+    maxFeePerGas: ethers.utils.parseUnits('500', 'gwei'),
+    maxPriorityFeePerGas: ethers.utils.parseUnits('30', 'gwei'),
 };
 
 const getDefaultProvider = async (baseProvider = ethers.provider, feeData = {}) => {
@@ -237,9 +237,14 @@ async function getEventsFromTx(txHash, eventName, contract, filterParams = [], a
 async function getLogsForBlockInterval(initialBlock, endBlock, contract, filters) {
     let logs = {};
     const blockInterval = 8000;
-    for (let i = initialBlock.block; i <= endBlock.block; i += blockInterval) {
+    const init = initialBlock.block ?? initialBlock;
+    const end = endBlock.block ?? endBlock;
+    console.log(init, initialBlock);
+    console.log(end, endBlock);
+
+    for (let i = init; i <= end; i += blockInterval) {
         const fromBlock = i;
-        const toBlock = Math.min(endBlock.block, i + blockInterval);
+        const toBlock = Math.min(end, i + blockInterval);
         DEBUG(fromBlock, '-', toBlock);
         const filterNames = Object.keys(filters);
         for (let filterName of filterNames) {

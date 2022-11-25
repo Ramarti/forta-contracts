@@ -102,6 +102,7 @@ const loadRoles = () => {
             roles[id.replace('_ROLE', '')] = ethers.utils.id(id);
         }
     }
+    roles.MINTER = ethers.utils.id('MINTER_ROLE');
     return roles;
 };
 

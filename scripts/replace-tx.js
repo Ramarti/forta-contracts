@@ -1,7 +1,7 @@
 const { ethers } = require('hardhat');
 const utils = require('./utils');
 
-const NONCE = 246;
+const NONCE = 426;
 
 async function main() {
     const provider = await utils.getDefaultProvider();
@@ -12,9 +12,6 @@ async function main() {
     console.log(`Network:  ${name} (${chainId})`);
     console.log(`Deployer: ${deployer.address}`);
     console.log('----------------------------------------------------');
-    if (chainId !== 80001 && chainId !== 137) {
-        throw new Error('Only supported for Polygon or Mumbai');
-    }
 
     console.log(
         await deployer.sendTransaction({

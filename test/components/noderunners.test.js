@@ -39,6 +39,7 @@ describe('Scanner Pool Registry', function () {
         scanner2Signature = await signERC712ScannerRegistration(verifyingContractInfo, scanner2Registration, this.accounts.user2);
     });
 
+
     it('register ScannerPool', async function () {
         await expect(this.scannerPools.connect(this.accounts.user1).registerScannerPool(1))
             .to.emit(this.scannerPools, 'Transfer')

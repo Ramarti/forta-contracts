@@ -1,5 +1,4 @@
 const hre = require('hardhat');
-const { ethers, defender } = hre;
 const DEBUG = require('debug')('forta');
 const utils = require('../utils');
 
@@ -8,7 +7,7 @@ async function updateVersions() {
     const deployer = await utils.getDefaultDeployer(provider);
 
     const { name, chainId } = await provider.getNetwork();
-    const configName = `${chainId === 5 ? './_old/' : ''}.cache-${chainId}${chainId === 5 ? '-with-components' : ''}`;
+    const configName = `${chainId === 5 ? '../_old/' : '../'}.cache-${chainId}${chainId === 5 ? '-with-components' : ''}`;
     const CACHE = new utils.AsyncConf({ cwd: __dirname, configName: configName });
 
     if (!provider.network.ensAddress) {
