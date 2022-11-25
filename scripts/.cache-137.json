@@ -9,21 +9,10 @@
 				"0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2"
 			],
 			"address": "0xc855d842ff0aF97B0D18Cc81eEcbb702EA1a0706",
+			"name": "AccessManager",
+			"verified": "true",
 			"version": "0.1.0"
-		},
-		"verified": "true"
-	},
-	"router-pending": "0xfe1ea97a099b5ed01a0648951f6aea7fc6cc352f79ebf425b882d287c8e93d11",
-	"router": {
-		"address": "0xbb12476ab9f27d3b441964B0aFC03D14a82e1D64",
-		"impl": {
-			"args": [
-				"0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2"
-			],
-			"address": "0x200Daf0a67B91bda59B57d436a3538E60C87c381",
-			"version": "0.1.0"
-		},
-		"verified": "true"
+		}
 	},
 	"agents-pending": "0x39dd322c91e6e4953370d0e2a2932d309dc091bc584d38c5fa4ce424835ce527",
 	"agents": {
@@ -33,7 +22,9 @@
 				"0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2"
 			],
 			"address": "0xA8A26969f7Be888D020B595340c490c02ec445dD",
-			"version": "0.1.2"
+			"name": "AgentRegistry",
+			"version": "0.1.5",
+			"verified": "true"
 		},
 		"verified": "true"
 	},
@@ -45,7 +36,9 @@
 				"0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2"
 			],
 			"address": "0x7D7A8077346204Aa1B28602ecfC977043bec2404",
-			"version": "0.1.1"
+			"name": "ScannerRegistry",
+			"version": "0.1.3",
+			"verified": "true"
 		},
 		"verified": "true"
 	},
@@ -57,7 +50,9 @@
 				"0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2"
 			],
 			"address": "0xC413BDBF64C3f3A64C5fBc7B547BC3AfB371d45d",
-			"version": "0.1.3"
+			"name": "Dispatch",
+			"version": "0.1.4",
+			"verified": "true"
 		},
 		"verified": "true"
 	},
@@ -93,7 +88,9 @@
 				"0xA6FA4fB5f76172d178d61B04b0ecd319C5d1C0aa"
 			],
 			"address": "0xd6b3139108E271c812Acc6fFEBAD28E935D61E24",
-			"version": "0.1.1"
+			"name": "FortaBridgedPolygon",
+			"version": "0.1.1",
+			"verified": "true"
 		}
 	},
 	"staking-pending": "0xaffd91a84b98c03fb0805b70827fa7e8f799fa00b8b26704955482f14feb38d4",
@@ -104,7 +101,9 @@
 				"0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2"
 			],
 			"address": "0x62FCaA1eDA3bcf18133510e52D28C8B79C912734",
-			"version": "0.1.0"
+			"name": "FortaStaking",
+			"version": "0.1.1",
+			"verified": "true"
 		},
 		"verified": "true"
 	},
@@ -116,7 +115,9 @@
 				"0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2"
 			],
 			"address": "0xf2339D7424a615FD3324dAC880D8D81cae1264E2",
-			"version": "0.1.0"
+			"name": "StakeSubjectGateway",
+			"version": "0.1.1",
+			"verified": "true"
 		},
 		"verified": "true"
 	},
@@ -128,7 +129,9 @@
 				"0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2"
 			],
 			"address": "0x68608f260BA3bE8808B83Fd686eCCFE6A9f468F7",
-			"version": "0.0.0"
+			"name": "ScannerNodeVersion",
+			"version": "0.1.1",
+			"verified": "true"
 		},
 		"verified": "true"
 	},
@@ -151,6 +154,7 @@
 	"forwarder": {
 		"address": "0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2",
 		"args": [],
+		"name": "Forwarder",
 		"version": "0.0.0"
 	},
 	"escrow-factory-pending": "0xadefef65f3463c1a31f25f1dcb238fc8629105ca5146862b4c654c1cc85ccefe",
@@ -160,6 +164,7 @@
 			"0xff771084D7C2e54C0F9cA79dA23656514D2c5dd2",
 			"0xd2863157539b1D11F39ce23fC4834B62082F6874"
 		],
+		"name": "StakingEscrowFactory",
 		"version": "0.0.0"
 	},
 	"escrow-template-pending": "0xadefef65f3463c1a31f25f1dcb238fc8629105ca5146862b4c654c1cc85ccefe",
@@ -170,6 +175,7 @@
 			"0x9ff62d1FC52A907B6DCbA8077c2DDCA6E6a9d3e1",
 			"0xd2863157539b1D11F39ce23fC4834B62082F6874"
 		],
+		"name": "StakingEscrow",
 		"version": "0.0.0"
 	},
 	"batch-relayer-pending": "0xe03451eff846689b448a658f64396a6a8511a27bdbb6c66c29f614850cb1f512",
@@ -187,7 +193,9 @@
 				"0x9ff62d1FC52A907B6DCbA8077c2DDCA6E6a9d3e1"
 			],
 			"address": "0xE7e33d453980e8023d54A70A40753bA7617B08F3",
-			"version": "0.1.0"
+			"name": "SlashingController",
+			"version": "0.1.0",
+			"verified": "true"
 		}
 	}
 }
