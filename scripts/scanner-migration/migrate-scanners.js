@@ -1,8 +1,8 @@
 const { ethers } = require('hardhat');
-const utils = require('./utils');
-const deployEnv = require('./loadEnv');
+const utils = require('../utils');
+const deployEnv = require('../loadEnv');
 const fs = require('fs');
-const scannerData = require('./data/scanners/matic/scanners.json');
+const scannerData = require('../data/scanners/matic/scanners.json');
 
 function updateScannerData(newData, network) {
     fs.writeFileSync(`./scripts/data/scanners/${network.name}/migration-scanners.json`, JSON.stringify(newData), null, 2);

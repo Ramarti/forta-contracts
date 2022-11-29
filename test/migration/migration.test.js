@@ -1,10 +1,10 @@
-/*
 const { ethers, upgrades } = require('hardhat');
 const { expect } = require('chai');
 const { prepare } = require('./fixture');
-const scannerData = require('../scripts/data/scanners/matic/scanners.json');
-const { subjectToActive } = require('../scripts/utils/staking.js');
-const { migrateFirstScanner, migratePool, scanner2ScannerPool } = require('../scripts/scanner-migration/migrate-scanners');
+const scannerData = require('../../scripts/data/scanners/matic/scanners.json');
+const { utils } = require('../../scripts/utils');
+const { subjectToActive } = require('../../scripts/utils/staking.js');
+const { migrateFirstScanner, migratePool, scanner2ScannerPool } = require('../../scripts/scanner-migration/migrate-scanners');
 
 class MockFs {
     constructor() {
@@ -17,31 +17,66 @@ class MockFs {
     }
 }
 
+const MIN_STAKE_MANAGED = '100';
+const MAX_STAKE_MANAGED = '100000';
+
+async function upgrade(that) {
+    const ScannerRegistry = await ethers.getContractFactory('ScannerRegistry');
+    that.scanners = await upgrades.upgradeProxy(that.scanners.address, ScannerRegistry, {
+        constructorArgs: [this.contracts.forwarder.address],
+        unsafeAllow: ['delegatecall'],
+        unsafeSkipStorageCheck: true,
+    });
+
+    await that.scanners.connect.setSubjectHandler(that.subjectGateway.address);
+
+    const FortaStaking = await ethers.getContractFactory('FortaStaking');
+    that.staking = await upgrades.upgradeProxy(that.staking.address, FortaStaking, {
+        constructorArgs: [that.that.forwarder.address],
+        unsafeAllow: ['delegatecall'],
+    });
+    await that.staking.configureStakeHelpers(that.subjectGateway.address, that.stakeAllocator.address, that.rewardsDistributor.address);
+
+    await that.scanners.configureMigration(10000 + (await ethers.provider.getBlock('latest')).timestamp, that.scannerPools.address);
+
+    // Increase time to after migration
+    await ethers.provider.send('evm_setNextBlockTimestamp', [(await that.scanners.sunsettingTime()).toNumber() + 1]);
+    await ethers.provider.send('evm_mine');
+}
+
+let scannerAddress;
 describe('Scanner 2 Scanner pool script', function () {
-    prepare();
+    prepare({
+        stake: {
+            scanners: { min: MIN_STAKE_MANAGED, max: MAX_STAKE_MANAGED, activated: true },
+        },
+    });
     beforeEach(async function () {
-        this.accounts.getAccount('scanner');
-        const ScannerRegistry_0_1_3 = await ethers.getContractFactory('ScannerRegistry_0_1_3');
-        this.scanners = await upgrades.deployProxy(ScannerRegistry_0_1_3, [this.contracts.access.address, 'Forta Scanners', 'FScanners'], {
-            kind: 'uups',
-            constructorArgs: [this.contracts.forwarder.address],
-            unsafeAllow: ['delegatecall'],
-        });
+        scannerAddress = this.accounts.other.address;
+
         await this.scanners.deployed();
-        await this.subjectGateway.connect(this.accounts.admin).setStakeSubject(0, this.scanners.address);
+        await this.subjectGateway.connect(this.accounts.admin).setStakeSubject(0, scannerAddress);
         await this.token.connect(this.accounts.minter).mint(this.accounts.user1.address, ethers.utils.parseEther('100000000'));
         await this.token.connect(this.accounts.user1).approve(this.staking.address, ethers.constants.MaxUint256);
     });
     describe('Operations', function () {
         it.only('migrates first pool and updates doc', async function () {
             const mfs = new MockFs();
-            await this.scanners.connect(this.account.manager).adminRegister(this.accounts.scanner.address, this.account.user1.address, 1, 'data');
-            await migrateFirstScanner(mfs, this.scanners, this.accounts.scanner.address, this.account.user1.address, 1);
+            await this.scanners.connect(this.accounts.manager).adminRegister(scannerAddress, this.accounts.user1.address, 137, 'data');
+            await this.staking.connect(this.accounts.user1).deposit(0, scannerAddress, MIN_STAKE_MANAGED);
+            upgrade(this);
+            await migrateFirstScanner(mfs, this.scanners, scannerAddress, this.accounts.user1.address, 137);
             expect(mfs.path).to.eq('./scripts/data/scanners/unknown/migration-scanners.json');
             expect(mfs.dataString).to.eq(JSON.stringify());
+            expect(await this.scanners.balanceOf(this.accounts.user1.address)).to.eq(0);
+            expect(await this.scanners.isRegistered(this.accounts.scanner.address)).to.eq(false);
+            expect(await this.staking.activeStakeFor(0, this.accounts.scanner.address)).to.eq(MIN_STAKE_MANAGED);
+            expect(await this.scannerPools.balanceOf(this.accounts.user1.address)).to.eq(1);
+            expect(await this.scannerPools.getScannerState(this.accounts.scanner.address)).to.eq([true, this.accounts.user1.address, 137, 'data', true, false]);
+            expect(await this.staking.activeStakeFor(0, this.accounts.scanner.address)).to.eq(MIN_STAKE_MANAGED);
         });
     });
-    describe('Full test', function () {
+    describe.skip('Full test', function () {
         beforeEach(async function () {
             const chains = Object.keys(scannerData);
             for (const chain of chains) {
@@ -68,7 +103,7 @@ describe('Scanner 2 Scanner pool script', function () {
 
             const NewImplementation = await ethers.getContractFactory('ScannerRegistry');
             this.scanners = await upgrades.upgradeProxy(this.scanners.address, NewImplementation, {
-                constructorArgs: [this.contracts.forwarder.address],
+                constructorArgs: [this.that.forwarder.address],
                 unsafeAllow: ['delegatecall'],
             });
             const { timestamp } = await this.accounts.user1.provider.getBlock('latest');
@@ -91,4 +126,3 @@ describe('Scanner 2 Scanner pool script', function () {
         });
     });
 });
-*/
