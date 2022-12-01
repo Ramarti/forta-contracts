@@ -46,11 +46,11 @@ async function main() {
         }
         if (!grouped[scanner.chainId][scanner.owner]) {
             grouped[scanner.chainId][scanner.owner] = {
-                scanners: [],
+                scanners: {},
                 poolId: 0,
             };
         }
-        grouped[scanner.chainId][scanner.owner].scanners.push(scanner);
+        grouped[scanner.chainId][scanner.owner].scanners[scanner.id] = scanner;
     }
 
     fs.writeFileSync(`./scripts/data/scanners/${network.name}/scanners.json`, JSON.stringify(grouped), null, 2);

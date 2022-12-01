@@ -34,7 +34,8 @@ async function upgrade(contracts) {
 }
 
 async function prepareScanners(contracts, scanners, staker, manager) {
-    for (const scanner of scanners) {
+    const scannerList = Object.keys(scanners).map((id) => scanners[id]);
+    for (const scanner of scannerList) {
         await contracts.scanners.connect(manager).adminRegister(scanner.id, scanner.owner, scanner.chainId, 'data');
         await contracts.staking.connect(staker).deposit(0, scanner.id, MIN_STAKE_MANAGED);
         await contracts.staking.connect(staker).safeTransferFrom(staker.address, scanner.owner, subjectToActive(0, scanner.id), MIN_STAKE_MANAGED, ethers.constants.HashZero);
@@ -51,8 +52,6 @@ describe('Scanner 2 Scanner pool script', function () {
     beforeEach(async function () {
         await this.token.connect(this.accounts.minter).mint(this.accounts.user1.address, ethers.utils.parseEther('100000000'));
         await this.token.connect(this.accounts.user1).approve(this.staking.address, ethers.constants.MaxUint256);
-        // const deploymentFileName = `./scripts/data/scanners/hardhat/migration-scanners.json`;
-        // fs.writeFileSync(deploymentFileName, JSON.stringify(scannerData, null, 2));
     });
     describe('Operations', function () {
         it.only('migrates first pool and updates doc', async function () {
@@ -63,18 +62,20 @@ describe('Scanner 2 Scanner pool script', function () {
             const scanners = await cache.get(`${chainId}.${owner}.scanners`);
             await prepareScanners(this.contracts, scanners, this.accounts.user1, this.accounts.manager);
             await upgrade(this.contracts);
-            await migrateScannersMintPool(cache, this.registryMigration.connect(this.accounts.manager), scanners, owner, chainId);
+            await migrateScannersMintPool(cache, this.registryMigration.connect(this.accounts.manager), owner, chainId, scanners);
             expect(await cache.get(`${chainId}.${owner}.poolId`)).to.eq('1');
-            const migrated = scanners.map((x) => {
-                return { ...x, ...{ migrated: true } };
-            });
-            expect(await cache.get(`${chainId}.${owner}.scanners`)).to.deep.eq(migrated);
+            for (const id of Object.keys(scanners)) {
+                scanners[id].migrated = true;
+            }
 
-            for (const scanner of scanners) {
+            expect(await cache.get(`${chainId}.${owner}.scanners`)).to.deep.eq(scanners);
+
+            for (const id of Object.keys(scanners)) {
+                const scanner = scanners[id];
                 expect(await this.scanners.balanceOf(scanner.owner)).to.eq(0);
                 expect(await this.scanners.isRegistered(scanner.id)).to.eq(false);
                 expect(await this.staking.activeStakeFor(0, scanner.id)).to.eq(0);
-                expect(await this.staking.activeStakeFor(2, 1)).to.eq(MIN_STAKE_MANAGED * scanners.length);
+                expect(await this.staking.activeStakeFor(2, 1)).to.eq(MIN_STAKE_MANAGED * Object.keys(scanners).length);
                 expect(await this.scannerPools.balanceOf(scanner.owner)).to.eq(1);
                 expect(await this.scannerPools.getScannerState(scanner.id)).to.deep.eq([
                     true,

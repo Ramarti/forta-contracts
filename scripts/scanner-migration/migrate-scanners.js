@@ -5,7 +5,8 @@ const scannerData = require('../data/scanners/matic/scanners.json');
 
 const CHUNK_SIZE = 100;
 
-async function migratePool(cache, scanners, chunkSize, contracts, poolId) {
+async function migratePool(cache, scanners, chunkSize, contracts) {
+    let poolId = await cache.set(`${chainId}.${owner}.poolId`);
     const chunks = scanners.chunk(chunkSize);
     for (const chunk of chunks) {
         const calls = chunk.map((s) => contracts.registryMigration.interface.encodeFunctionData('migrate', [s.id, poolId, s.owner, s.chainId]));
@@ -14,13 +15,14 @@ async function migratePool(cache, scanners, chunkSize, contracts, poolId) {
     }
 }
 
-async function migrateScannersMintPool(cache, registryMigration, scanners, owner, chainId) {
-    if (scanners.length === 0) {
-        throw new Error('migrating empty array scanner');
-    }
-    const scannerAddresses = scanners.map((x) => x.id);
+async function migrateScannersMintPool(cache, registryMigration, owner, chainId, scanners) {
+    const scannerAddresses = Object.keys(scanners);
     const tx = await registryMigration.migrate(scannerAddresses, 0, owner, chainId);
     const receipt = await tx.wait();
+    await saveMigration(cache, receipt, chainId, owner, scannerAddresses);
+}
+
+async function saveMigration(cache, receipt, chainId, owner, scannerAddresses) {
     const mintedEvent = receipt.events.find((x) => x.event === 'MigrationExecuted');
     if (mintedEvent?.args.mintedScannerPool) {
         const poolId = mintedEvent?.args.scannerPoolId?.toString();
@@ -29,11 +31,9 @@ async function migrateScannersMintPool(cache, registryMigration, scanners, owner
     const scannerUpdatedTopic = ethers.utils.id('ScannerUpdated(uint256,uint256,string,uint256)');
     const scannerRegistrationEvents = receipt.events.filter((x) => x.topics[0] === scannerUpdatedTopic);
     let updatedAddresses = scannerAddresses.filter((id) => scannerRegistrationEvents.find((event) => event.topics[1].includes(id.toLowerCase().replace('0x', ''))));
-    const updatedScanners = scanners.map((x) => {
-        const migrated = updatedAddresses.includes(x.id);
-        return { ...x, migrated };
-    });
-    await cache.set(`${chainId}.${owner}.scanners`, updatedScanners);
+    for (const updated of updatedAddresses) {
+        await cache.set(`${chainId}.${owner}.scanners.${updated}.migrated`, true);
+    }
 }
 
 async function scanner2ScannerPool(config = {}) {
