@@ -47,6 +47,8 @@ function prepare(config = {}) {
                 this.access.connect(this.accounts.admin).grantRole(this.roles.STAKING_CONTRACT, this.contracts.staking.address),
                 this.access.connect(this.accounts.admin).grantRole(this.roles.ALLOCATOR_CONTRACT, this.contracts.stakeAllocator.address),
                 this.access.connect(this.accounts.admin).grantRole(this.roles.MIGRATION_EXECUTOR, this.accounts.manager.address),
+                this.access.connect(this.accounts.admin).grantRole(this.roles.SCANNER_2_SCANNER_POOL_MIGRATOR, this.contracts.registryMigration.address),
+
                 this.token.connect(this.accounts.admin).grantRole(this.roles.MINTER, this.accounts.minter.address),
                 this.otherToken.connect(this.accounts.admin).grantRole(this.roles.MINTER, this.accounts.minter.address),
             ].map((txPromise) => txPromise.then((tx) => tx.wait()).catch(() => {}))
@@ -88,16 +90,18 @@ function prepare(config = {}) {
             if (config.stake.scanners) {
                 // DEPRECATION NOTICE: scanners
                 DEBUG('Fixture: setStakeThreshold scanners');
+                const chains = [1, 137, 56, 43114, 42161, 10, 250];
+                for (const chain of chains) {
+                    await this.scanners
+                        .connect(this.accounts.manager)
+                        .setStakeThreshold({ max: config.stake.scanners.max, min: config.stake.scanners.min, activated: config.stake.scanners.activated }, chain);
 
-                await this.scanners
-                    .connect(this.accounts.manager)
-                    .setStakeThreshold({ max: config.stake.scanners.max, min: config.stake.scanners.min, activated: config.stake.scanners.activated }, 1);
+                    DEBUG('Fixture: setManagedStakeThreshold scannerPools');
 
-                DEBUG('Fixture: setManagedStakeThreshold scannerPools');
-
-                await this.scannerPools
-                    .connect(this.accounts.manager)
-                    .setManagedStakeThreshold({ max: config.stake.scanners.max, min: config.stake.scanners.min, activated: config.stake.scanners.activated }, 1);
+                    await this.scannerPools
+                        .connect(this.accounts.manager)
+                        .setManagedStakeThreshold({ max: config.stake.scanners.max, min: config.stake.scanners.min, activated: config.stake.scanners.activated }, chain);
+                }
             }
 
             DEBUG('Fixture: stake configured');

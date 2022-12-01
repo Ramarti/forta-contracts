@@ -89,6 +89,8 @@ async function migrate(config = {}) {
             unsafeAllow: ['delegatecall'],
         });
 
+        await contracts.staking.setStakingParametersManager(contracts.subjectGateway.address);
+
         DEBUG(`[${Object.keys(contracts).length}.1] stake subject gateway: ${contracts.subjectGateway.address}`);
 
         contracts.rewardsDistributor = await utils.tryFetchProxy(
@@ -217,6 +219,7 @@ async function migrate(config = {}) {
                 unsafeAllow: 'delegatecall',
             }
         );
+        console.log('Scanner', contracts.scanners.address);
         await contracts.subjectGateway.connect(deployer).setStakeSubject(SCANNER_SUBJECT, contracts.scanners.address);
         await contracts.subjectGateway.connect(deployer).setStakeSubject(AGENT_SUBJECT, contracts.agents.address);
         await contracts.subjectGateway.connect(deployer).setStakeSubject(SCANNER_POOL_SUBJECT, contracts.scannerPools.address);
@@ -236,18 +239,18 @@ async function migrate(config = {}) {
             }
         );
         DEBUG(`[${Object.keys(contracts).length}] dispatch: ${contracts.dispatch.address}`);
+
+        const ScannerToScannerPoolMigration = await ethers.getContractFactory('ScannerToScannerPoolMigration', deployer);
+        contracts.registryMigration = await upgrades.deployProxy(ScannerToScannerPoolMigration, [contracts.access.address], {
+            kind: 'uups',
+            constructorArgs: [contracts.forwarder.address, contracts.scanners.address, contracts.scannerPools.address, contracts.staking.address],
+            unsafeAllow: 'delegatecall',
+        });
+        DEBUG(`[${Object.keys(contracts).length}] registryMigration: ${contracts.registryMigration.address}`);
     }
 
     // Roles dictionary
     const roles = deployEnv.loadRoles();
-
-    DEBUG(`roles fetched`);
-    if (config.childChain && contracts.access && chainId !== 1 && chainId !== 137) {
-        await contracts.access
-            .hasRole(roles.ENS_MANAGER, deployer.address)
-            .then((result) => result || contracts.access.grantRole(roles.ENS_MANAGER, deployer.address).then((tx) => tx.wait()));
-    }
-
     return {
         provider,
         deployer,

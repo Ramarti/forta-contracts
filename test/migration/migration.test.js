@@ -2,49 +2,46 @@ const { ethers, upgrades } = require('hardhat');
 const { expect } = require('chai');
 const { prepare } = require('./fixture');
 const scannerData = require('../../scripts/data/scanners/matic/scanners.json');
-const { utils } = require('../../scripts/utils');
+const { AsyncConf } = require('../../scripts/utils');
 const { subjectToActive } = require('../../scripts/utils/staking.js');
-const { migrateFirstScanner, migratePool, scanner2ScannerPool } = require('../../scripts/scanner-migration/migrate-scanners');
-
-class MockFs {
-    constructor() {
-        this.path = '';
-        this.dataString = '';
-    }
-    writeFileSync(path, dataString) {
-        this.path = path;
-        this.dataString = dataString;
-    }
-}
+const { migrateScannersMintPool, migratePool, scanner2ScannerPool } = require('../../scripts/scanner-migration/migrate-scanners');
+const fs = require('fs');
 
 const MIN_STAKE_MANAGED = '100';
 const MAX_STAKE_MANAGED = '100000';
 
-async function upgrade(that) {
+async function upgrade(contracts) {
+    console.log('upgrading');
     const ScannerRegistry = await ethers.getContractFactory('ScannerRegistry');
-    that.scanners = await upgrades.upgradeProxy(that.scanners.address, ScannerRegistry, {
-        constructorArgs: [this.contracts.forwarder.address],
+    contracts.scanners = await upgrades.upgradeProxy(contracts.scanners.address, ScannerRegistry, {
+        constructorArgs: [contracts.forwarder.address],
         unsafeAllow: ['delegatecall'],
         unsafeSkipStorageCheck: true,
     });
 
-    await that.scanners.connect.setSubjectHandler(that.subjectGateway.address);
-
     const FortaStaking = await ethers.getContractFactory('FortaStaking');
-    that.staking = await upgrades.upgradeProxy(that.staking.address, FortaStaking, {
-        constructorArgs: [that.that.forwarder.address],
+    contracts.staking = await upgrades.upgradeProxy(contracts.staking.address, FortaStaking, {
+        constructorArgs: [contracts.forwarder.address],
         unsafeAllow: ['delegatecall'],
     });
-    await that.staking.configureStakeHelpers(that.subjectGateway.address, that.stakeAllocator.address, that.rewardsDistributor.address);
+    await contracts.staking.configureStakeHelpers(contracts.subjectGateway.address, contracts.stakeAllocator.address, contracts.rewardsDistributor.address);
 
-    await that.scanners.configureMigration(10000 + (await ethers.provider.getBlock('latest')).timestamp, that.scannerPools.address);
+    await contracts.scanners.configureMigration(10000 + (await ethers.provider.getBlock('latest')).timestamp, contracts.scannerPools.address);
 
     // Increase time to after migration
-    await ethers.provider.send('evm_setNextBlockTimestamp', [(await that.scanners.sunsettingTime()).toNumber() + 1]);
+    await ethers.provider.send('evm_setNextBlockTimestamp', [(await contracts.scanners.sunsettingTime()).toNumber() + 1]);
     await ethers.provider.send('evm_mine');
 }
 
-let scannerAddress;
+async function prepareScanners(contracts, scanners, staker, manager) {
+    for (const scanner of scanners) {
+        await contracts.scanners.connect(manager).adminRegister(scanner.id, scanner.owner, scanner.chainId, 'data');
+        await contracts.staking.connect(staker).deposit(0, scanner.id, MIN_STAKE_MANAGED);
+        await contracts.staking.connect(staker).safeTransferFrom(staker.address, scanner.owner, subjectToActive(0, scanner.id), MIN_STAKE_MANAGED, ethers.constants.HashZero);
+    }
+}
+
+let cache;
 describe('Scanner 2 Scanner pool script', function () {
     prepare({
         stake: {
@@ -52,28 +49,42 @@ describe('Scanner 2 Scanner pool script', function () {
         },
     });
     beforeEach(async function () {
-        scannerAddress = this.accounts.other.address;
-
-        await this.scanners.deployed();
-        await this.subjectGateway.connect(this.accounts.admin).setStakeSubject(0, scannerAddress);
         await this.token.connect(this.accounts.minter).mint(this.accounts.user1.address, ethers.utils.parseEther('100000000'));
         await this.token.connect(this.accounts.user1).approve(this.staking.address, ethers.constants.MaxUint256);
+        // const deploymentFileName = `./scripts/data/scanners/hardhat/migration-scanners.json`;
+        // fs.writeFileSync(deploymentFileName, JSON.stringify(scannerData, null, 2));
     });
     describe('Operations', function () {
         it.only('migrates first pool and updates doc', async function () {
-            const mfs = new MockFs();
-            await this.scanners.connect(this.accounts.manager).adminRegister(scannerAddress, this.accounts.user1.address, 137, 'data');
-            await this.staking.connect(this.accounts.user1).deposit(0, scannerAddress, MIN_STAKE_MANAGED);
-            upgrade(this);
-            await migrateFirstScanner(mfs, this.scanners, scannerAddress, this.accounts.user1.address, 137);
-            expect(mfs.path).to.eq('./scripts/data/scanners/unknown/migration-scanners.json');
-            expect(mfs.dataString).to.eq(JSON.stringify());
-            expect(await this.scanners.balanceOf(this.accounts.user1.address)).to.eq(0);
-            expect(await this.scanners.isRegistered(this.accounts.scanner.address)).to.eq(false);
-            expect(await this.staking.activeStakeFor(0, this.accounts.scanner.address)).to.eq(MIN_STAKE_MANAGED);
-            expect(await this.scannerPools.balanceOf(this.accounts.user1.address)).to.eq(1);
-            expect(await this.scannerPools.getScannerState(this.accounts.scanner.address)).to.eq([true, this.accounts.user1.address, 137, 'data', true, false]);
-            expect(await this.staking.activeStakeFor(0, this.accounts.scanner.address)).to.eq(MIN_STAKE_MANAGED);
+            fs.copyFileSync('./test/migration/data/first-pool.json', './test/migration/data/t-first-pool.json');
+            cache = new AsyncConf({ cwd: __dirname, configName: './data/t-first-pool' });
+            const chainId = '137';
+            const owner = '0xc29af06142138f893e3f1c1d11aa98c3313b8c1f';
+            const scanners = await cache.get(`${chainId}.${owner}.scanners`);
+            await prepareScanners(this.contracts, scanners, this.accounts.user1, this.accounts.manager);
+            await upgrade(this.contracts);
+            await migrateScannersMintPool(cache, this.registryMigration.connect(this.accounts.manager), scanners, owner, chainId);
+            expect(await cache.get(`${chainId}.${owner}.poolId`)).to.eq('1');
+            const migrated = scanners.map((x) => {
+                return { ...x, ...{ migrated: true } };
+            });
+            expect(await cache.get(`${chainId}.${owner}.scanners`)).to.deep.eq(migrated);
+
+            for (const scanner of scanners) {
+                expect(await this.scanners.balanceOf(scanner.owner)).to.eq(0);
+                expect(await this.scanners.isRegistered(scanner.id)).to.eq(false);
+                expect(await this.staking.activeStakeFor(0, scanner.id)).to.eq(0);
+                expect(await this.staking.activeStakeFor(2, 1)).to.eq(MIN_STAKE_MANAGED * scanners.length);
+                expect(await this.scannerPools.balanceOf(scanner.owner)).to.eq(1);
+                expect(await this.scannerPools.getScannerState(scanner.id)).to.deep.eq([
+                    true,
+                    ethers.utils.getAddress(scanner.owner),
+                    ethers.BigNumber.from(scanner.chainId),
+                    'data',
+                    true,
+                    false,
+                ]);
+            }
         });
     });
     describe.skip('Full test', function () {
@@ -103,7 +114,7 @@ describe('Scanner 2 Scanner pool script', function () {
 
             const NewImplementation = await ethers.getContractFactory('ScannerRegistry');
             this.scanners = await upgrades.upgradeProxy(this.scanners.address, NewImplementation, {
-                constructorArgs: [this.that.forwarder.address],
+                constructorArgs: [this.contracts.forwarder.address],
                 unsafeAllow: ['delegatecall'],
             });
             const { timestamp } = await this.accounts.user1.provider.getBlock('latest');

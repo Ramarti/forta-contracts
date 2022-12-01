@@ -9,7 +9,7 @@ import "./IDirectStakeSubject.sol";
 
 /**
  * Formerly FortaStakingParameters.
- * 
+ *
  * This contract manages the relationship between the staking contracts and the several affected staking subjects,
  * who hold the responsability of defining staking thresholds, managed subjects, and related particularities.
  */
@@ -23,7 +23,7 @@ contract StakeSubjectGateway is BaseComponentUpgradeable, SubjectTypeValidator, 
     error NonIDelegatedSubjectHandler(uint8 subjectType, address stakeSubject);
 
     string public constant version = "0.1.1";
-    uint256 private constant MAX_UINT = 2**256 - 1;
+    uint256 private constant MAX_UINT = 2 ** 256 - 1;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(address forwarder) initializer ForwardedContext(forwarder) {}
@@ -65,7 +65,7 @@ contract StakeSubjectGateway is BaseComponentUpgradeable, SubjectTypeValidator, 
     /**
      * Get max stake for that `subjectType` and `subject`
      * @return if subject is DIRECT, returns stakeThreshold.max, if not MAX_UINT. If subject not set, it will return 0.
-     */ 
+     */
     function maxStakeFor(uint8 subjectType, uint256 subject) external view returns (uint256) {
         if (getSubjectTypeAgency(subjectType) != SubjectStakeAgency.DIRECT) {
             return MAX_UINT;
@@ -74,13 +74,12 @@ contract StakeSubjectGateway is BaseComponentUpgradeable, SubjectTypeValidator, 
             return 0;
         }
         return IDirectStakeSubject(_stakeSubjects[subjectType]).getStakeThreshold(subject).max;
-
     }
 
     /**
      * Get min stake for that `subjectType` and `subject`
      * @return if subject is DIRECT, returns stakeThreshold.min, if not 0. If subject not set, it will return MAX_UINT.
-     */ 
+     */
     function minStakeFor(uint8 subjectType, uint256 subject) external view returns (uint256) {
         if (getSubjectTypeAgency(subjectType) != SubjectStakeAgency.DIRECT) {
             return 0;
@@ -171,5 +170,4 @@ contract StakeSubjectGateway is BaseComponentUpgradeable, SubjectTypeValidator, 
         }
         return IStakeSubject(_stakeSubjects[subjectType]).ownerOf(subject);
     }
-
 }
