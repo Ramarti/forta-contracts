@@ -5,14 +5,42 @@ const scannerData = require('../data/scanners/matic/scanners.json');
 
 const CHUNK_SIZE = 100;
 
-async function migratePool(cache, scanners, chunkSize, contracts) {
+async function migratePool(cache, registryMigration, owner, chainId, chunkSize) {
     let poolId = await cache.set(`${chainId}.${owner}.poolId`);
+    let scanners = await cache.set(`${chainId}.${owner}.scanners`);
+    let scanners = filterMigrated(scanners);
+    let mintedNew = false;
+    if (poolId === '0') {
+        mintedNew = true;
+        const firstScanners = sliceScanners(0, chunkSize);
+        await migrateScannersMintPool(cache, registryMigration, owner, chainId, firstScanners);
+        poolId = await cache.set(`${chainId}.${owner}.poolId`);
+    }
     const chunks = scanners.chunk(chunkSize);
     for (const chunk of chunks) {
-        const calls = chunk.map((s) => contracts.registryMigration.interface.encodeFunctionData('migrate', [s.id, poolId, s.owner, s.chainId]));
-        const tx = await contracts.registryMigration.multicall(calls);
+        const calls = chunk.map((s) => registryMigration.interface.encodeFunctionData('migrate', [s.id, poolId, s.owner, s.chainId]));
+        const tx = await registryMigration.multicall(calls);
         const receipt = await tx.wait();
+
     }
+}
+
+function filterMigrated(scanners) {
+    const result = {};
+    for (const id of Object.keys(scanners)) {
+        if (!scanners[id].migrated) {
+            result[id] = scanners[id];
+        }
+    }
+    return result;
+}
+
+function sliceScanners(scanners, from, to) {
+    const result = {};
+    for (const id of Object.keys(scanners).slice(from, to)) {
+        result[id] = scanners[id];
+    }
+    return result;
 }
 
 async function migrateScannersMintPool(cache, registryMigration, owner, chainId, scanners) {
