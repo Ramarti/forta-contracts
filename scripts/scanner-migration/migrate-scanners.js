@@ -6,7 +6,7 @@ const scannerData = require('../data/scanners/matic/scanners.json');
 const CHUNK_SIZE = 100;
 
 async function migratePool(cache, registryMigration, owner, chainId, chunkSize) {
-    let poolId = await cache.set(`${chainId}.${owner}.poolId`);
+    /*let poolId = await cache.set(`${chainId}.${owner}.poolId`);
     let scanners = await cache.set(`${chainId}.${owner}.scanners`);
     let scanners = filterMigrated(scanners);
     let mintedNew = false;
@@ -22,7 +22,7 @@ async function migratePool(cache, registryMigration, owner, chainId, chunkSize) 
         const tx = await registryMigration.multicall(calls);
         const receipt = await tx.wait();
 
-    }
+    }*/
 }
 
 function filterMigrated(scanners) {

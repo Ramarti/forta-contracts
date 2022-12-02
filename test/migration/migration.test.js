@@ -54,7 +54,7 @@ describe('Scanner 2 Scanner pool script', function () {
         await this.token.connect(this.accounts.user1).approve(this.staking.address, ethers.constants.MaxUint256);
     });
     describe('Operations', function () {
-        it.only('migrates first pool and updates doc', async function () {
+        it.skip('migrates first pool and updates doc', async function () {
             fs.copyFileSync('./test/migration/data/first-pool.json', './test/migration/data/t-first-pool.json');
             cache = new AsyncConf({ cwd: __dirname, configName: './data/t-first-pool' });
             const chainId = '137';
