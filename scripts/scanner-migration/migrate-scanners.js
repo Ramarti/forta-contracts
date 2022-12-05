@@ -5,26 +5,6 @@ const scannerData = require('../data/scanners/matic/scanners.json');
 
 const CHUNK_SIZE = 100;
 
-async function migratePool(cache, registryMigration, owner, chainId, chunkSize) {
-    /*let poolId = await cache.set(`${chainId}.${owner}.poolId`);
-    let scanners = await cache.set(`${chainId}.${owner}.scanners`);
-    let scanners = filterMigrated(scanners);
-    let mintedNew = false;
-    if (poolId === '0') {
-        mintedNew = true;
-        const firstScanners = sliceScanners(0, chunkSize);
-        await migrateScannersMintPool(cache, registryMigration, owner, chainId, firstScanners);
-        poolId = await cache.set(`${chainId}.${owner}.poolId`);
-    }
-    const chunks = scanners.chunk(chunkSize);
-    for (const chunk of chunks) {
-        const calls = chunk.map((s) => registryMigration.interface.encodeFunctionData('migrate', [s.id, poolId, s.owner, s.chainId]));
-        const tx = await registryMigration.multicall(calls);
-        const receipt = await tx.wait();
-
-    }*/
-}
-
 function filterMigrated(scanners) {
     const result = {};
     for (const id of Object.keys(scanners)) {
@@ -43,13 +23,6 @@ function sliceScanners(scanners, from, to) {
     return result;
 }
 
-async function migrateScannersMintPool(cache, registryMigration, owner, chainId, scanners) {
-    const scannerAddresses = Object.keys(scanners);
-    const tx = await registryMigration.migrate(scannerAddresses, 0, owner, chainId);
-    const receipt = await tx.wait();
-    await saveMigration(cache, receipt, chainId, owner, scannerAddresses);
-}
-
 async function saveMigration(cache, receipt, chainId, owner, scannerAddresses) {
     const mintedEvent = receipt.events.find((x) => x.event === 'MigrationExecuted');
     if (mintedEvent?.args.mintedScannerPool) {
@@ -62,6 +35,34 @@ async function saveMigration(cache, receipt, chainId, owner, scannerAddresses) {
     for (const updated of updatedAddresses) {
         await cache.set(`${chainId}.${owner}.scanners.${updated}.migrated`, true);
     }
+}
+
+async function migratePool(cache, registryMigration, owner, chainId, chunkSize) {
+    let poolId = await cache.set(`${chainId}.${owner}.poolId`);
+    let scanners = await cache.set(`${chainId}.${owner}.scanners`);
+    scanners = filterMigrated(scanners);
+    let migratedAddresses = [];
+    if (poolId === '0') {
+        const firstScanners = sliceScanners(0, chunkSize);
+        await migrateScannersMintPool(cache, registryMigration, owner, chainId, firstScanners);
+        poolId = await cache.set(`${chainId}.${owner}.poolId`);
+        migratedAddresses = Object.keys(firstScanners);
+    }
+    let scannerAddressesChunks = Object.keys(scanners)
+        .filter((id) => !migratedAddresses.includes(id))
+        .chunk(chunkSize);
+
+    const calls = scannerAddressesChunks.map((addressChunk) => registryMigration.interface.encodeFunctionData('migrate', [addressChunk, poolId, owner, chainId]));
+    const tx = await registryMigration.multicall(calls);
+    const receipt = await tx.wait();
+    saveMigration(cache, receipt, chainId, owner, scannerAddressesChunks.flat());
+}
+
+async function migrateScannersMintPool(cache, registryMigration, owner, chainId, scanners) {
+    const scannerAddresses = Object.keys(scanners);
+    const tx = await registryMigration.migrate(scannerAddresses, 0, owner, chainId);
+    const receipt = await tx.wait();
+    await saveMigration(cache, receipt, chainId, owner, scannerAddresses);
 }
 
 async function scanner2ScannerPool(config = {}) {
